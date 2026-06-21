@@ -95,29 +95,33 @@ def extract_players(max_pages=3):
     return pd.DataFrame(rows)
 
 
-def extract_stats(max_pages=2):
-    print("Fetching recent stats...")
-    raw = fetch_all_pages("stats", params={"per_page": 25}, max_pages=max_pages)
+def extract_games(max_pages=3, seasons=None):
+    print("Fetching games...")
+    params = {"per_page": 25}
+    if seasons:
+        # BallDontLie expects repeated seasons[] params, which requests
+        # builds correctly from a list value under this key.
+        params["seasons[]"] = seasons
+    raw = fetch_all_pages("games", params=params, max_pages=max_pages)
     rows = []
-    for s in raw:
-        # Defensive: skip records missing required identifiers instead of
-        # crashing the whole pipeline on one bad row.
-        if not s.get("player") or not s.get("game") or not s.get("team"):
+    for g in raw:
+        # Defensive: skip games missing required team references instead of
+        # crashing the whole pipeline on one malformed row.
+        if not g.get("home_team") or not g.get("visitor_team"):
             continue
 
         rows.append(
             {
-                "player_id": s["player"]["id"],
-                "team_id": s["team"]["id"],
-                "game_id": s["game"]["id"],
-                "game_date": s["game"]["date"][:10],
-                "points": s.get("pts") or 0,
-                "rebounds": s.get("reb") or 0,
-                "assists": s.get("ast") or 0,
-                "steals": s.get("stl") or 0,
-                "blocks": s.get("blk") or 0,
-                "turnovers": s.get("turnover") or 0,
-                "minutes": s.get("min") or None,
+                "game_id": g["id"],
+                "game_date": g["date"][:10],
+                "season": g.get("season"),
+                "status": g.get("status"),
+                "home_team_id": g["home_team"]["id"],
+                "visitor_team_id": g["visitor_team"]["id"],
+                "home_team_score": g.get("home_team_score") or 0,
+                "visitor_team_score": g.get("visitor_team_score") or 0,
+                "period": g.get("period") or 0,
+                "postseason": g.get("postseason") or False,
             }
         )
     return pd.DataFrame(rows)
@@ -173,7 +177,7 @@ def load_players(df):
     print(f"Loaded {len(rows)} players.")
 
 
-def load_stats(df):
+def load_games(df):
     if df.empty:
         return
     conn = get_connection()
@@ -181,35 +185,38 @@ def load_stats(df):
     rows = list(
         df[
             [
-                "player_id",
-                "team_id",
                 "game_id",
                 "game_date",
-                "points",
-                "rebounds",
-                "assists",
-                "steals",
-                "blocks",
-                "turnovers",
-                "minutes",
+                "season",
+                "status",
+                "home_team_id",
+                "visitor_team_id",
+                "home_team_score",
+                "visitor_team_score",
+                "period",
+                "postseason",
             ]
         ].itertuples(index=False, name=None)
     )
     execute_values(
         cur,
         """
-        INSERT INTO fact_game_stats
-            (player_id, team_id, game_id, game_date, points, rebounds,
-             assists, steals, blocks, turnovers, minutes)
+        INSERT INTO fact_games
+            (game_id, game_date, season, status, home_team_id, visitor_team_id,
+             home_team_score, visitor_team_score, period, postseason)
         VALUES %s
-        ON CONFLICT (player_id, game_id) DO NOTHING
+        ON CONFLICT (game_id) DO UPDATE SET
+            status = EXCLUDED.status,
+            home_team_score = EXCLUDED.home_team_score,
+            visitor_team_score = EXCLUDED.visitor_team_score,
+            period = EXCLUDED.period
         """,
         rows,
     )
     conn.commit()
     cur.close()
     conn.close()
-    print(f"Loaded {len(rows)} stat rows (duplicates skipped).")
+    print(f"Loaded {len(rows)} games.")
 
 
 def run():
@@ -219,8 +226,10 @@ def run():
     players_df = extract_players()
     load_players(players_df)
 
-    stats_df = extract_stats()
-    load_stats(stats_df)
+    # NBA season is labeled by its starting year (e.g. the 2024-25 season is
+    # season=2024). Adjust this if running well after a season has ended.
+    games_df = extract_games(seasons=[2024])
+    load_games(games_df)
 
     print("Ingestion complete.")
 
