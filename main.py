@@ -216,3 +216,15 @@ def get_team_record(team_id: int, season: Optional[int] = None):
     cur.close()
     conn.close()
     return {"team_id": team_id, "season": season, **row}
+
+
+@app.post("/ingest")
+def trigger_ingestion():
+    """
+    Trigger an ETL ingestion run as a background Celery task.
+    Returns immediately with a task ID — the actual work happens
+    asynchronously in the Celery worker container.
+    """
+    from celery_app import run_ingestion
+    task = run_ingestion.delay()
+    return {"task_id": task.id, "status": "queued"}
