@@ -1,3 +1,4 @@
+![CI](https://github.com/Sukhmangill23/nba-etl-pipeline/actions/workflows/ci.yml/badge.svg)
 # NBA ETL Pipeline
 
 A production-style ETL pipeline that ingests NBA game data, stores it in a star schema, and exposes it through a REST API. Built to demonstrate backend and data engineering fundamentals: pipeline orchestration, background task processing, containerization, and CI/CD.
