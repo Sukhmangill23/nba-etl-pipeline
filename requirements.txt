@@ -6,3 +6,5 @@ fastapi
 uvicorn[standard]
 celery[redis]
 redis
+pytest
+httpx
