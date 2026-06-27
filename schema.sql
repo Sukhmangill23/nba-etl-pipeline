@@ -14,18 +14,15 @@ CREATE TABLE dim_players (
     team_id     INTEGER REFERENCES dim_teams(team_id)
 );
 
-CREATE TABLE fact_game_stats (
-    stat_id     SERIAL PRIMARY KEY,
-    player_id   INTEGER REFERENCES dim_players(player_id),
-    team_id     INTEGER REFERENCES dim_teams(team_id),
-    game_id     INTEGER NOT NULL,
-    game_date   DATE NOT NULL,
-    points      INTEGER,
-    rebounds    INTEGER,
-    assists     INTEGER,
-    steals      INTEGER,
-    blocks      INTEGER,
-    turnovers   INTEGER,
-    minutes     VARCHAR(10),
-    UNIQUE (player_id, game_id)
+CREATE TABLE fact_games (
+    game_id             INTEGER PRIMARY KEY,
+    game_date           DATE NOT NULL,
+    season              INTEGER,
+    status              VARCHAR(20),
+    home_team_id        INTEGER REFERENCES dim_teams(team_id),
+    visitor_team_id     INTEGER REFERENCES dim_teams(team_id),
+    home_team_score     INTEGER,
+    visitor_team_score  INTEGER,
+    period              INTEGER,
+    postseason          BOOLEAN
 );

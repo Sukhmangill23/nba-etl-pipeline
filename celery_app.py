@@ -37,6 +37,13 @@ app.conf.update(
     enable_utc=True,
 )
 
+app.conf.beat_schedule = {
+    "ingest-every-day": {
+        "task": "celery_app.run_ingestion",
+        "schedule": 86400.0,  # seconds — 24 hours
+    },
+}
+
 
 @app.task(bind=True, max_retries=3, default_retry_delay=60)
 def run_ingestion(self):

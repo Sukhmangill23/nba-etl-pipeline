@@ -64,6 +64,22 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  beat:
+    build: .
+    container_name: nba_beat
+    restart: always
+    command: celery -A celery_app beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   pgdata:
