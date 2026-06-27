@@ -8,3 +8,4 @@ celery[redis]
 redis
 pytest
 httpx
+pytest-cov
